@@ -1,0 +1,1937 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASCII Video & YouTube Renderer</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        cyber: {
+                            bg: '#0d1117',
+                            panel: '#161b22',
+                            border: '#30363d',
+                            green: '#00ff41',
+                            amber: '#ffb000',
+                            accent: '#58a6ff'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbars for sleek dark UI */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0d1117;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #30363d;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #484f58;
+        }
+
+        /* Custom Range Sliders */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #21262d;
+            height: 6px;
+            border-radius: 999px;
+            outline: none;
+            border: 1px solid #30363d;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #00ff41;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(0, 255, 65, 0.5);
+            transition: transform 0.1s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #00ff41;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 8px rgba(0, 255, 65, 0.5);
+        }
+
+        /* Subtle CRT scanline overlay option */
+        .crt-overlay {
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.25) 50%
+            ), linear-gradient(
+                90deg,
+                rgba(255, 0, 0, 0.03),
+                rgba(0, 255, 0, 0.01),
+                rgba(0, 0, 255, 0.03)
+            );
+            background-size: 100% 3px, 6px 100%;
+            pointer-events: none;
+        }
+
+        /* High-efficiency zero-reflow container & static 16-color 4-bit CGA/ANSI classes for <pre> mode */
+        #asciiPreOutput {
+            contain: strict;
+            will-change: contents;
+            line-height: 1.0;
+            letter-spacing: 0;
+        }
+        .c0  { color: #0c0c0c; }
+        .c1  { color: #0037da; }
+        .c2  { color: #13a10e; }
+        .c3  { color: #3a96dd; }
+        .c4  { color: #c50f1f; }
+        .c5  { color: #881798; }
+        .c6  { color: #c19c00; }
+        .c7  { color: #cccccc; }
+        .c8  { color: #767676; }
+        .c9  { color: #3b78ff; }
+        .c10 { color: #16c60c; }
+        .c11 { color: #61d6d6; }
+        .c12 { color: #e74856; }
+        .c13 { color: #b4009e; }
+        .c14 { color: #f9f1a5; }
+        .c15 { color: #f2f2f2; }
+    </style>
+</head>
+<body class="bg-cyber-bg text-gray-200 font-sans min-h-screen flex flex-col selection:bg-cyber-green selection:text-black">
+
+    <!-- Top Navigation Bar -->
+    <header class="border-b border-cyber-border bg-cyber-panel/90 backdrop-blur-md sticky top-0 z-30 px-4 py-3">
+        <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-black border border-cyber-green/50 flex items-center justify-center shadow-[0_0_12px_rgba(0,255,65,0.2)]">
+                    <span class="font-mono font-bold text-cyber-green text-sm leading-none">@#</span>
+                </div>
+                <div>
+                    <h1 class="font-mono font-bold text-base sm:text-lg tracking-tight text-white flex items-center gap-2">
+                        ASCII VIDEO & YOUTUBE RENDERER
+                        <span class="hidden sm:inline-block text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-cyber-green/10 text-cyber-green border border-cyber-green/30">v2.6 Live Engine</span>
+                    </h1>
+                    <p class="text-xs text-gray-400 hidden sm:block">Real-time character matrix synthesizer &amp; live tab/video pixel sampler</p>
+                </div>
+            </div>
+
+            <!-- Live Telemetry Readout -->
+            <div class="flex flex-wrap items-center gap-2 sm:gap-3 font-mono text-xs">
+                <div class="px-3 py-1.5 rounded-lg bg-black/60 border border-cyber-border flex items-center gap-2">
+                    <span id="statusDot" class="w-2 h-2 rounded-full bg-cyber-green animate-pulse"></span>
+                    <span id="sourceBadge" class="text-gray-300">DEMO: 3D WAVE</span>
+                </div>
+                <div class="px-3 py-1.5 rounded-lg bg-black/60 border border-cyber-border text-cyber-green flex items-center gap-2">
+                    <span id="gridReadout">120x42</span>
+                    <span class="text-gray-500">@</span>
+                    <span id="fpsReadout" class="font-bold">60 FPS</span>
+                    <span class="text-gray-500">|</span>
+                    <span id="frameTimeReadout" class="text-cyber-accent">1.2ms</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Toast / Notification Banner -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Main Workspace Layout -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto p-3 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
+        
+        <!-- LEFT SIDEBAR: Controls & Source Input (4 cols on lg) -->
+        <aside class="lg:col-span-4 xl:col-span-3 flex flex-col gap-4">
+            
+            <!-- 1. Video Source Card -->
+            <section class="bg-cyber-panel border border-cyber-border rounded-xl p-4 shadow-lg">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="font-mono text-xs font-bold uppercase tracking-wider text-cyber-green flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        1. Video Source Input
+                    </h2>
+                    <button id="toggleCorsInfoBtn" class="text-xs text-cyber-accent hover:underline flex items-center gap-1" title="How YouTube ASCII works">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        CORS Info
+                    </button>
+                </div>
+
+                <!-- Collapsible CORS & YouTube Technical Explanation -->
+                <div id="corsInfoBox" class="mb-3 p-3 rounded-lg bg-blue-950/40 border border-blue-500/30 text-xs text-blue-200 leading-relaxed">
+                    <p class="font-semibold text-blue-300 mb-1">Why YouTube needs Live Tab Capture:</p>
+                    <p class="text-blue-200/90 mb-2">
+                        Browsers block direct pixel reading (<code class="bg-black/40 px-1 rounded">getImageData</code>) from cross-origin YouTube iframes due to <strong>CORS security policies</strong>.
+                    </p>
+                    <p class="text-blue-200/90">
+                        <strong>Seamless Bridge:</strong> Load any YouTube URL below to embed it, then click <strong>"Capture Tab / YouTube Live"</strong> and select this browser tab (or your YouTube window) to stream its pixels into real-time ASCII!
+                    </p>
+                </div>
+
+                <!-- YouTube or Direct MP4 URL Input -->
+                <div class="space-y-2 mb-3">
+                    <label class="block text-xs font-medium text-gray-400">YouTube Link or Direct Video (.mp4/.webm)</label>
+                    <div class="flex gap-1.5">
+                        <input id="urlInput" type="text" placeholder="https://youtube.com/watch?v=..." 
+                               class="flex-1 min-w-0 bg-cyber-bg border border-cyber-border rounded-lg px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyber-green font-mono">
+                        <button id="loadUrlBtn" class="px-3 py-2 bg-cyber-green text-black font-semibold text-xs rounded-lg hover:bg-emerald-400 transition shrink-0">
+                            Load
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Primary Action Buttons: Live Screen/Tab Capture & Local File Upload -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2 mb-3">
+                    <button id="captureScreenBtn" class="w-full py-2.5 px-3 rounded-lg bg-gradient-to-r from-red-600/90 to-rose-600/90 hover:from-red-500 hover:to-rose-500 text-white font-medium text-xs flex items-center justify-center gap-2 shadow-md transition border border-red-400/30">
+                        <span class="w-2 h-2 rounded-full bg-white animate-ping"></span>
+                        Capture Tab / YouTube Live
+                    </button>
+
+                    <label class="w-full py-2 px-3 rounded-lg bg-cyber-bg hover:bg-gray-800 border border-cyber-border text-gray-200 font-medium text-xs flex items-center justify-center gap-2 cursor-pointer transition">
+                        <svg class="w-4 h-4 text-cyber-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        <span>Upload Local Video File</span>
+                        <input id="fileInput" type="file" accept="video/*" class="hidden">
+                    </label>
+                </div>
+
+                <!-- Built-In Procedural Demos (Instant Zero-CORS Testing) -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1.5">Built-in Live Generators (Instant Test)</label>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        <button data-demo="torus" class="demo-btn active px-2 py-1.5 rounded-lg text-[11px] font-mono border border-cyber-green bg-cyber-green/15 text-cyber-green font-semibold transition">
+                            3D Wave
+                        </button>
+                        <button data-demo="plasma" class="demo-btn px-2 py-1.5 rounded-lg text-[11px] font-mono border border-cyber-border bg-cyber-bg text-gray-400 hover:text-white transition">
+                            Plasma Orb
+                        </button>
+                        <button data-demo="warp" class="demo-btn px-2 py-1.5 rounded-lg text-[11px] font-mono border border-cyber-border bg-cyber-bg text-gray-400 hover:text-white transition">
+                            Star Warp
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Embedded YouTube / Source Monitor Panel -->
+                <div id="sourceMonitorWrapper" class="mt-3 pt-3 border-t border-cyber-border">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-[11px] font-mono text-gray-400 uppercase">Source Monitor</span>
+                        <span id="monitorHint" class="text-[10px] text-gray-500">Preview</span>
+                    </div>
+                    
+                    <!-- Container for YouTube Iframe or Video Preview -->
+                    <div class="relative w-full aspect-video bg-black rounded-lg overflow-hidden border border-cyber-border flex items-center justify-center">
+                        <!-- YouTube Embed Iframe -->
+                        <iframe id="youtubeIframe" class="hidden w-full h-full" src="" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                        
+                        <!-- Live Preview Mirror Canvas (shows what the sampler sees) -->
+                        <canvas id="previewMonitorCanvas" class="w-full h-full object-contain"></canvas>
+                        
+                        <!-- Overlay Quick Button when YouTube is loaded -->
+                        <div id="ytCaptureOverlay" class="hidden absolute bottom-2 right-2">
+                            <button id="quickCaptureOverlayBtn" class="px-2.5 py-1 rounded bg-red-600/95 hover:bg-red-500 text-white text-[11px] font-semibold shadow-lg backdrop-blur-sm flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                                Stream This Tab to ASCII
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. ASCII Character & Matrix Controls -->
+            <section class="bg-cyber-panel border border-cyber-border rounded-xl p-4 shadow-lg space-y-4">
+                <h2 class="font-mono text-xs font-bold uppercase tracking-wider text-cyber-green flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                    2. Character Engine &amp; Tuning
+                </h2>
+
+                <!-- Character Set Ramp -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1">Character Set Ramp</label>
+                    <select id="charsetSelect" class="w-full bg-cyber-bg border border-cyber-border rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyber-green font-mono">
+                        <option value="standard">Standard Dense ($@B%8&amp;WM#*...)</option>
+                        <option value="alphanumeric">Alphanumeric (0-9, A-Z, a-z)</option>
+                        <option value="blocks">Blocks &amp; Symbols (█▓▒░#@%*=+:-.)</option>
+                        <option value="matrix">Matrix Binary (0 1)</option>
+                        <option value="minimal">Minimalist (#:+-. )</option>
+                        <option value="custom">Custom Character Ramp...</option>
+                    </select>
+                </div>
+
+                <!-- Custom Ramp Input (Shown when 'custom' is selected) -->
+                <div id="customRampContainer" class="hidden">
+                    <label class="block text-xs font-medium text-gray-400 mb-1">Custom Ramp (Darkest &rarr; Brightest)</label>
+                    <input id="customRampInput" type="text" value="@%#*+=-:. " 
+                           class="w-full bg-cyber-bg border border-cyber-border rounded-lg px-3 py-1.5 text-xs text-cyber-green font-mono focus:outline-none focus:border-cyber-green">
+                </div>
+
+                <!-- Color Theme Mode -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1">Color &amp; Terminal Theme</label>
+                    <select id="colorModeSelect" class="w-full bg-cyber-bg border border-cyber-border rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyber-green">
+                        <option value="green">Classic Hacker Green (#00FF41)</option>
+                        <option value="4bit">4-Bit Color (16-Color CGA/ANSI)</option>
+                        <option value="rgb">Full True-Color RGB (Pixel Sampled)</option>
+                        <option value="cyberpunk">Cyberpunk Cyan / Magenta</option>
+                        <option value="amber">Amber Retro Terminal (#FFB000)</option>
+                        <option value="white">Crisp Monochrome White</option>
+                        <option value="inverted">Inverted Paper (Black on White)</option>
+                    </select>
+                </div>
+
+                <!-- 4-Bit Palette Preview & Bayer Dithering Toggle (Shown in 4-Bit Mode) -->
+                <div id="fourBitOptionsContainer" class="hidden p-2.5 rounded-lg bg-cyber-bg border border-cyber-border space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-mono text-gray-400">16-Color CGA/VGA Palette</span>
+                        <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input id="bayerDitherCheck" type="checkbox" checked class="accent-cyber-green rounded">
+                            <span class="text-[11px] text-cyber-green font-mono">Bayer Dither</span>
+                        </label>
+                    </div>
+                    <div id="paletteSwatches" class="grid grid-cols-8 gap-1"></div>
+                </div>
+
+                <!-- Resolution / Character Columns Slider -->
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-400">Density (Columns)</span>
+                        <span id="colsValue" class="font-mono text-cyber-green font-semibold">120 chars</span>
+                    </div>
+                    <input id="colsSlider" type="range" min="40" max="220" value="120" class="w-full">
+                </div>
+
+                <!-- Brightness Slider -->
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-400">Brightness</span>
+                        <span id="brightnessValue" class="font-mono text-gray-300">0</span>
+                    </div>
+                    <input id="brightnessSlider" type="range" min="-100" max="100" value="0" class="w-full">
+                </div>
+
+                <!-- Contrast Slider -->
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-400">Contrast</span>
+                        <span id="contrastValue" class="font-mono text-gray-300">1.15x</span>
+                    </div>
+                    <input id="contrastSlider" type="range" min="0.2" max="3.0" step="0.05" value="1.15" class="w-full">
+                </div>
+
+                <!-- Toggles Row -->
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <label class="flex items-center gap-2 p-2 rounded-lg bg-cyber-bg border border-cyber-border cursor-pointer hover:border-gray-600 transition">
+                        <input id="invertLuminanceCheck" type="checkbox" class="accent-cyber-green rounded">
+                        <span class="text-xs text-gray-300">Invert Luma</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 rounded-lg bg-cyber-bg border border-cyber-border cursor-pointer hover:border-gray-600 transition">
+                        <input id="crtScanlinesCheck" type="checkbox" checked class="accent-cyber-green rounded">
+                        <span class="text-xs text-gray-300">CRT Scanlines</span>
+                    </label>
+                </div>
+
+                <!-- Frame Rate Cap / Loop Scheduler Selector -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1">Engine Loop &amp; Frame Rate Cap</label>
+                    <select id="fpsLoopSelect" class="w-full bg-cyber-bg border border-cyber-border rounded-lg px-3 py-2 text-xs text-cyber-green font-mono focus:outline-none focus:border-cyber-green">
+                        <option value="unlocked">Unlocked (Max Speed / 120+ FPS)</option>
+                        <option value="vsync">VSync (Monitor Refresh Rate)</option>
+                    </select>
+                </div>
+
+                <div id="autoCropRow" class="hidden">
+                    <label class="flex items-center justify-between p-2 rounded-lg bg-cyber-bg border border-cyber-border cursor-pointer hover:border-gray-600 transition">
+                        <span class="text-xs text-gray-300">Auto-Crop YouTube Player Region</span>
+                        <input id="autoCropYtCheck" type="checkbox" checked class="accent-cyber-green rounded">
+                    </label>
+                </div>
+            </section>
+        </aside>
+
+        <!-- RIGHT MAIN STAGE: ASCII Viewport & Playback Bar (8/9 cols on lg) -->
+        <section class="lg:col-span-8 xl:col-span-9 flex flex-col gap-3">
+            
+            <!-- Stage Action Toolbar -->
+            <div class="bg-cyber-panel border border-cyber-border rounded-xl p-2.5 sm:px-4 flex flex-wrap items-center justify-between gap-2 shadow-md">
+                
+                <!-- Playback & View Mode Controls -->
+                <div class="flex items-center gap-2">
+                    <button id="playPauseBtn" class="px-3 py-1.5 rounded-lg bg-cyber-bg hover:bg-gray-800 border border-cyber-border text-xs font-medium text-white flex items-center gap-1.5 transition">
+                        <svg id="pauseIcon" class="w-3.5 h-3.5 text-cyber-green" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        <svg id="playIcon" class="w-3.5 h-3.5 text-cyber-green hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        <span id="playPauseLabel">Pause</span>
+                    </button>
+
+                    <button id="muteBtn" class="px-3 py-1.5 rounded-lg bg-cyber-bg hover:bg-gray-800 border border-cyber-border text-xs font-medium text-gray-300 flex items-center gap-1.5 transition" title="Toggle Audio for Video/Stream">
+                        <svg id="muteIcon" class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clip-rule="evenodd"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>
+                        <svg id="unmuteIcon" class="w-3.5 h-3.5 text-cyber-green hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+                        <span id="muteLabel">Muted</span>
+                    </button>
+
+                    <!-- Render Mode Switcher (Canvas Atlas vs Color RLE Selectable <pre>) -->
+                    <div class="flex items-center bg-cyber-bg border border-cyber-border rounded-lg p-0.5 text-xs">
+                        <button id="modeCanvasBtn" class="px-2.5 py-1 rounded-md bg-cyber-green/20 text-cyber-green font-mono font-semibold transition">
+                            Canvas Atlas
+                        </button>
+                        <button id="modeTextBtn" class="px-2.5 py-1 rounded-md text-gray-400 hover:text-white font-mono transition">
+                            Color &lt;pre&gt; RLE
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Export & Copy Frame Utilities -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <!-- Video Format Selector & Live ASCII Video Recorder -->
+                    <div class="flex items-center bg-cyber-bg border border-cyber-border rounded-lg p-0.5 text-xs">
+                        <select id="videoFormatSelect" class="bg-transparent text-gray-200 font-mono text-xs px-2 py-1 focus:outline-none cursor-pointer" title="Target output container format">
+                            <option value="mp4" class="bg-cyber-panel text-white">MP4 (.mp4)</option>
+                            <option value="mov" class="bg-cyber-panel text-white">MOV (.mov)</option>
+                            <option value="avi" class="bg-cyber-panel text-white">AVI (.avi)</option>
+                        </select>
+                        <button id="recordVideoBtn" class="px-2.5 py-1 rounded-md bg-rose-600/20 hover:bg-rose-600/35 border border-rose-500/40 text-rose-300 font-mono font-semibold flex items-center gap-1.5 transition" title="Record live ASCII canvas stream as video">
+                            <span id="recIndicatorDot" class="w-2 h-2 rounded-full bg-rose-500"></span>
+                            <span id="recordVideoLabel">Rec Video</span>
+                        </button>
+                    </div>
+
+                    <button id="copyTextBtn" class="px-3 py-1.5 rounded-lg bg-cyber-bg hover:bg-gray-800 border border-cyber-border text-xs font-medium text-gray-200 flex items-center gap-1.5 transition">
+                        <svg class="w-3.5 h-3.5 text-cyber-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                        Copy ASCII
+                    </button>
+
+                    <button id="exportPngBtn" class="px-3 py-1.5 rounded-lg bg-cyber-bg hover:bg-gray-800 border border-cyber-border text-xs font-medium text-gray-200 flex items-center gap-1.5 transition">
+                        <svg class="w-3.5 h-3.5 text-cyber-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        Save PNG
+                    </button>
+
+                    <button id="exportHtmlBtn" class="px-3 py-1.5 rounded-lg bg-cyber-green/15 hover:bg-cyber-green/25 border border-cyber-green/40 text-xs font-semibold text-cyber-green flex items-center gap-1.5 transition" title="Download self-contained 60 FPS HTML player">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                        Export 60FPS HTML
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main ASCII Viewport Container -->
+            <div id="asciiStageContainer" class="relative flex-1 min-h-[420px] sm:min-h-[580px] lg:min-h-[680px] bg-black border border-cyber-border rounded-xl overflow-hidden flex items-center justify-center shadow-2xl">
+                
+                <!-- High-Speed Offscreen Glyph Atlas Canvas Output -->
+                <canvas id="asciiOutputCanvas" class="w-full h-full block"></canvas>
+
+                <!-- Selectable <pre> Text Mode Output (Hidden by default, supports full RLE color) -->
+                <pre id="asciiPreOutput" class="hidden w-full h-full overflow-hidden p-2 font-mono select-all whitespace-pre text-center flex flex-col items-center justify-center"></pre>
+
+                <!-- Optional CRT Scanline Effect Overlay -->
+                <div id="crtOverlay" class="crt-overlay absolute inset-0 z-10"></div>
+
+                <!-- Bottom-Left Watermark / Mode Indicator -->
+                <div class="absolute bottom-3 left-3 z-20 pointer-events-none px-2.5 py-1 rounded bg-black/80 border border-white/10 backdrop-blur-sm font-mono text-[10px] text-gray-300 flex items-center gap-2">
+                    <span id="renderEngineLabel" class="text-cyber-green">ENGINE: CANVAS ATLAS</span>
+                    <span>&bull;</span>
+                    <span id="rampLabel">RAMP: STANDARD</span>
+                    <span id="domNodesBadge" class="hidden text-cyber-accent">&bull; RLE SPANS: 0</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Hidden Media & Processing Elements -->
+    <video id="hiddenVideo" class="hidden" playsinline muted loop crossorigin="anonymous"></video>
+    <canvas id="sampleCanvas" class="hidden"></canvas>
+    <canvas id="demoGeneratorCanvas" width="480" height="270" class="hidden"></canvas>
+
+    <script>
+        /**
+         * ASCII Video & YouTube Renderer
+         * High-Speed Offscreen Glyph Atlas + 4-Bit CGA/ANSI Quantizer + Live Tab Capture
+         */
+        (() => {
+            // --- DOM References ---
+            const hiddenVideo = document.getElementById('hiddenVideo');
+            const sampleCanvas = document.getElementById('sampleCanvas');
+            const sampleCtx = sampleCanvas.getContext('2d', { willReadFrequently: true });
+            
+            const demoCanvas = document.getElementById('demoGeneratorCanvas');
+            const demoCtx = demoCanvas.getContext('2d');
+
+            const previewMonitorCanvas = document.getElementById('previewMonitorCanvas');
+            const previewMonitorCtx = previewMonitorCanvas.getContext('2d');
+            const youtubeIframe = document.getElementById('youtubeIframe');
+            const ytCaptureOverlay = document.getElementById('ytCaptureOverlay');
+            const monitorHint = document.getElementById('monitorHint');
+
+            const asciiOutputCanvas = document.getElementById('asciiOutputCanvas');
+            const asciiOutputCtx = asciiOutputCanvas.getContext('2d', { alpha: false, desynchronized: true });
+            const asciiPreOutput = document.getElementById('asciiPreOutput');
+            const asciiStageContainer = document.getElementById('asciiStageContainer');
+            const crtOverlay = document.getElementById('crtOverlay');
+
+            // Controls
+            const urlInput = document.getElementById('urlInput');
+            const loadUrlBtn = document.getElementById('loadUrlBtn');
+            const captureScreenBtn = document.getElementById('captureScreenBtn');
+            const quickCaptureOverlayBtn = document.getElementById('quickCaptureOverlayBtn');
+            const fileInput = document.getElementById('fileInput');
+            const demoButtons = document.querySelectorAll('.demo-btn');
+
+            const charsetSelect = document.getElementById('charsetSelect');
+            const customRampContainer = document.getElementById('customRampContainer');
+            const customRampInput = document.getElementById('customRampInput');
+            const colorModeSelect = document.getElementById('colorModeSelect');
+            const fourBitOptionsContainer = document.getElementById('fourBitOptionsContainer');
+            const bayerDitherCheck = document.getElementById('bayerDitherCheck');
+            const paletteSwatches = document.getElementById('paletteSwatches');
+
+            const colsSlider = document.getElementById('colsSlider');
+            const colsValue = document.getElementById('colsValue');
+            const brightnessSlider = document.getElementById('brightnessSlider');
+            const brightnessValue = document.getElementById('brightnessValue');
+            const contrastSlider = document.getElementById('contrastSlider');
+            const contrastValue = document.getElementById('contrastValue');
+
+            const invertLuminanceCheck = document.getElementById('invertLuminanceCheck');
+            const crtScanlinesCheck = document.getElementById('crtScanlinesCheck');
+            const fpsLoopSelect = document.getElementById('fpsLoopSelect');
+            const autoCropRow = document.getElementById('autoCropRow');
+            const autoCropYtCheck = document.getElementById('autoCropYtCheck');
+
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            const playPauseLabel = document.getElementById('playPauseLabel');
+            const playIcon = document.getElementById('playIcon');
+            const pauseIcon = document.getElementById('pauseIcon');
+
+            const muteBtn = document.getElementById('muteBtn');
+            const muteLabel = document.getElementById('muteLabel');
+            const muteIcon = document.getElementById('muteIcon');
+            const unmuteIcon = document.getElementById('unmuteIcon');
+
+            const modeCanvasBtn = document.getElementById('modeCanvasBtn');
+            const modeTextBtn = document.getElementById('modeTextBtn');
+            const videoFormatSelect = document.getElementById('videoFormatSelect');
+            const recordVideoBtn = document.getElementById('recordVideoBtn');
+            const recIndicatorDot = document.getElementById('recIndicatorDot');
+            const recordVideoLabel = document.getElementById('recordVideoLabel');
+            const copyTextBtn = document.getElementById('copyTextBtn');
+            const exportPngBtn = document.getElementById('exportPngBtn');
+            const exportHtmlBtn = document.getElementById('exportHtmlBtn');
+
+            const toggleCorsInfoBtn = document.getElementById('toggleCorsInfoBtn');
+            const corsInfoBox = document.getElementById('corsInfoBox');
+
+            // Telemetry Readouts
+            const sourceBadge = document.getElementById('sourceBadge');
+            const statusDot = document.getElementById('statusDot');
+            const gridReadout = document.getElementById('gridReadout');
+            const fpsReadout = document.getElementById('fpsReadout');
+            const frameTimeReadout = document.getElementById('frameTimeReadout');
+            const renderEngineLabel = document.getElementById('renderEngineLabel');
+            const rampLabel = document.getElementById('rampLabel');
+            const domNodesBadge = document.getElementById('domNodesBadge');
+
+            // --- Classic 16-Color 4-Bit CGA / VGA / ANSI Terminal Palette ---
+            const CGA_4BIT_PALETTE = [
+                { name: 'Black',         r: 12,  g: 12,  b: 12,  hex: '#0c0c0c' },
+                { name: 'Dark Blue',     r: 0,   g: 55,  b: 218, hex: '#0037da' },
+                { name: 'Dark Green',    r: 19,  g: 161, b: 14,  hex: '#13a10e' },
+                { name: 'Dark Cyan',     r: 58,  g: 150, b: 221, hex: '#3a96dd' },
+                { name: 'Dark Red',      r: 197, g: 15,  b: 31,  hex: '#c50f1f' },
+                { name: 'Dark Magenta',  r: 136, g: 23,  b: 152, hex: '#881798' },
+                { name: 'Brown / Olive', r: 193, g: 156, b: 0,   hex: '#c19c00' },
+                { name: 'Light Gray',    r: 204, g: 204, b: 204, hex: '#cccccc' },
+                { name: 'Dark Gray',     r: 118, g: 118, b: 118, hex: '#767676' },
+                { name: 'Bright Blue',   r: 59,  g: 120, b: 255, hex: '#3b78ff' },
+                { name: 'Bright Green',  r: 22,  g: 198, b: 12,  hex: '#16c60c' },
+                { name: 'Bright Cyan',   r: 97,  g: 214, b: 214, hex: '#61d6d6' },
+                { name: 'Bright Red',    r: 231, g: 72,  b: 86,  hex: '#e74856' },
+                { name: 'Bright Magenta',r: 180, g: 0,   b: 158, hex: '#b4009e' },
+                { name: 'Bright Yellow', r: 249, g: 241, b: 165, hex: '#f9f1a5' },
+                { name: 'Bright White',  r: 242, g: 242, b: 242, hex: '#f2f2f2' }
+            ];
+
+            // Render palette swatches in UI
+            CGA_4BIT_PALETTE.forEach(c => {
+                const swatch = document.createElement('div');
+                swatch.className = 'h-3.5 rounded-sm border border-white/15';
+                swatch.style.backgroundColor = c.hex;
+                swatch.title = `${c.name} (${c.hex})`;
+                paletteSwatches.appendChild(swatch);
+            });
+
+            // Flat 16-entry Bayer 4x4 Dithering Matrix scaled by spread (44) for zero-multiplication inner-loop lookup
+            const BAYER_FLAT_SCALED = new Int16Array([
+                -21,   1, -15,   7,
+                 12, -10,  18,  -4,
+                -12,  10, -18,   4,
+                 21,  -1,  15,  -7
+            ]);
+
+            // Precomputed Brightness/Contrast Curve Lookup Table (256 entries, rebuilt only when sliders move)
+            const toneLut = new Uint8Array(256);
+            function rebuildToneLut(brightness, contrast) {
+                for (let i = 0; i < 256; i++) {
+                    const v = (i - 128) * contrast + 128 + brightness;
+                    toneLut[i] = v < 0 ? 0 : (v > 255 ? 255 : v | 0);
+                }
+            }
+            rebuildToneLut(0, 1.15);
+
+            // Precomputed 32x32x32 RGB -> Nearest 4-Bit Palette Index Lookup Table (32KB O(1) fast quantizer)
+            const LUT_SIZE = 32;
+            const paletteLut4Bit = new Uint8Array(LUT_SIZE * LUT_SIZE * LUT_SIZE);
+            (() => {
+                for (let r5 = 0; r5 < LUT_SIZE; r5++) {
+                    const r = (r5 << 3) | (r5 >> 2);
+                    for (let g5 = 0; g5 < LUT_SIZE; g5++) {
+                        const g = (g5 << 3) | (g5 >> 2);
+                        for (let b5 = 0; b5 < LUT_SIZE; b5++) {
+                            const b = (b5 << 3) | (b5 >> 2);
+                            let bestIdx = 0;
+                            let bestDist = Infinity;
+                            for (let i = 0; i < CGA_4BIT_PALETTE.length; i++) {
+                                const p = CGA_4BIT_PALETTE[i];
+                                const dr = r - p.r;
+                                const dg = g - p.g;
+                                const db = b - p.b;
+                                const dist = 2 * dr * dr + 4 * dg * dg + 3 * db * db;
+                                if (dist < bestDist) {
+                                    bestDist = dist;
+                                    bestIdx = i;
+                                }
+                            }
+                            paletteLut4Bit[(r5 << 10) | (g5 << 5) | b5] = bestIdx;
+                        }
+                    }
+                }
+            })();
+
+            // Precomputed 12-bit RGB (0..4095) -> '#rgb' hex string table for instant zero-allocation RLE spans
+            const HEX12_LUT = new Array(4096);
+            (() => {
+                const hexChars = '0123456789abcdef';
+                for (let i = 0; i < 4096; i++) {
+                    HEX12_LUT[i] = '#' + hexChars[(i >> 8) & 15] + hexChars[(i >> 4) & 15] + hexChars[i & 15];
+                }
+            })();
+
+            // Static opening/closing tags for 16-color 4-bit RLE spans
+            const C4_OPEN_TAGS = Array.from({ length: 16 }, (_, i) => `<span class="c${i}">`);
+            const CYBER_OPEN_TAGS = ['<span style="color:#312e81">', '<span style="color:#ec4899">', '<span style="color:#06b6d4">', '<span style="color:#f8fafc">'];
+
+            // Pre-escaped HTML character table per ramp (avoids regex/replace per pixel in <pre> mode)
+            const htmlSafeRampCache = new Map();
+            function getHtmlSafeRamp(ramp) {
+                let arr = htmlSafeRampCache.get(ramp);
+                if (!arr) {
+                    arr = new Array(ramp.length);
+                    for (let i = 0; i < ramp.length; i++) {
+                        const ch = ramp[i];
+                        arr[i] = ch === '&' ? '&amp;' : (ch === '<' ? '&lt;' : (ch === '>' ? '&gt;' : ch));
+                    }
+                    htmlSafeRampCache.set(ramp, arr);
+                }
+                return arr;
+            }
+
+            // Reusable pre-allocated buffers for RLE HTML & plain text assembly (zero GC churn)
+            const htmlChunkBuf = new Array(65536);
+            const plainLineBuf = new Array(512);
+            const plainFrameBuf = new Array(512);
+
+            // --- Character Ramps (Ordered from Darkest/Densest to Brightest/Sparsest) ---
+            const CHAR_RAMPS = {
+                standard: "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. ",
+                alphanumeric: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ",
+                blocks: "█▓▒░#@%*=+:-. ",
+                matrix: "01 ",
+                minimal: "#:+-. ",
+                custom: "@%#*+=-:. "
+            };
+
+            // --- Application State ---
+            const state = {
+                sourceType: 'demo', // 'demo' | 'video' | 'screen'
+                demoType: 'torus',  // 'torus' | 'plasma' | 'warp'
+                ytLoaded: false,
+                autoCropYt: true,
+                isPaused: false,
+                renderMode: 'canvas', // 'canvas' | 'text'
+                loopMode: 'unlocked', // 'unlocked' | 'vsync'
+                cols: 120,
+                rows: 42,
+                charsetKey: 'standard',
+                colorMode: 'green',
+                bayerDither: true,
+                brightness: 0,
+                contrast: 1.15,
+                invertLuminance: false,
+                lastFrameText: '',
+                lastSpanCount: 0,
+                mediaStream: null,
+                // Live ASCII Video Recording state
+                isRecording: false,
+                mediaRecorder: null,
+                recordedChunks: [],
+                recordStartTime: 0,
+                recordTimerInterval: null,
+                recordTargetExt: 'mp4',
+                // FPS & compute time calculation
+                frameCount: 0,
+                lastFpsTime: performance.now(),
+                currentFps: 60,
+                avgComputeMs: 1.0,
+                time: 0
+            };
+
+            // --- Ultra-Fast 32-Bit Pixel-Buffer Glyph Bitmap Cache + Single-Upload Framebuffer ---
+            // Instead of 10,000+ slow ctx.drawImage() calls per frame, we pre-rasterize grayscale glyph
+            // coverage masks once and blit 32-bit RGBA pixels directly into a single ImageData buffer!
+            const pixelBlitter = {
+                cacheKey: '',
+                cellW: 0,
+                cellH: 0,
+                numChars: 0,
+                glyphMasks: null, // Uint8Array of size (numChars * cellW * cellH)
+                frameImageData: null,
+                frameU32: null,
+                frameW: 0,
+                frameH: 0,
+                scratchCanvas: document.createElement('canvas'),
+                scratchCtx: null
+            };
+            pixelBlitter.scratchCtx = pixelBlitter.scratchCanvas.getContext('2d', { willReadFrequently: true });
+
+            function ensureGlyphMasks(ramp, cellW, cellH, fontSize) {
+                const w = Math.max(2, Math.round(cellW));
+                const h = Math.max(4, Math.round(cellH));
+                const key = `${ramp}|${w}x${h}|${fontSize.toFixed(1)}`;
+                if (pixelBlitter.cacheKey === key) return;
+
+                pixelBlitter.cacheKey = key;
+                pixelBlitter.cellW = w;
+                pixelBlitter.cellH = h;
+                pixelBlitter.numChars = ramp.length;
+
+                const totalW = ramp.length * w;
+                const sc = pixelBlitter.scratchCanvas;
+                const sctx = pixelBlitter.scratchCtx;
+                sc.width = totalW;
+                sc.height = h;
+
+                sctx.fillStyle = '#000000';
+                sctx.fillRect(0, 0, totalW, h);
+                sctx.fillStyle = '#ffffff';
+                sctx.font = `700 ${fontSize}px "JetBrains Mono", monospace`;
+                sctx.textBaseline = 'top';
+                sctx.textAlign = 'left';
+
+                for (let i = 0; i < ramp.length; i++) {
+                    const ch = ramp[i];
+                    if (ch !== ' ') {
+                        sctx.fillText(ch, i * w, 0);
+                    }
+                }
+
+                const img = sctx.getImageData(0, 0, totalW, h).data;
+                const masks = new Uint8Array(ramp.length * w * h);
+                for (let c = 0; c < ramp.length; c++) {
+                    const dstOffset = c * w * h;
+                    const srcXBase = c * w;
+                    for (let py = 0; py < h; py++) {
+                        const rowSrc = (py * totalW + srcXBase) << 2;
+                        const rowDst = dstOffset + py * w;
+                        for (let px = 0; px < w; px++) {
+                            masks[rowDst + px] = img[rowSrc + (px << 2)];
+                        }
+                    }
+                }
+                pixelBlitter.glyphMasks = masks;
+            }
+
+            // Precomputed 32-bit little-endian ABGR colors for 4-Bit CGA palette
+            const CGA_4BIT_U32 = new Uint32Array(CGA_4BIT_PALETTE.map(c => (255 << 24) | (c.b << 16) | (c.g << 8) | c.r));
+            const CYBER_U32 = new Uint32Array([
+                (255 << 24) | (0x81 << 16) | (0x2e << 8) | 0x31,
+                (255 << 24) | (0x99 << 16) | (0x48 << 8) | 0xec,
+                (255 << 24) | (0xd4 << 16) | (0xb6 << 8) | 0x06,
+                (255 << 24) | (0xfc << 16) | (0xfa << 8) | 0xf8
+            ]);
+
+            // --- Toast Notification Helper ---
+            function showToast(message, type = 'info') {
+                const container = document.getElementById('toastContainer');
+                const toast = document.createElement('div');
+                const colors = {
+                    info: 'bg-cyber-panel border-cyber-accent text-blue-200',
+                    success: 'bg-cyber-panel border-cyber-green text-cyber-green',
+                    warn: 'bg-cyber-panel border-amber-500 text-amber-300',
+                    error: 'bg-cyber-panel border-red-500 text-red-300'
+                };
+                toast.className = `pointer-events-auto px-4 py-2.5 rounded-lg border shadow-xl text-xs font-medium backdrop-blur-md transition-all duration-300 transform translate-y-2 opacity-0 ${colors[type] || colors.info}`;
+                toast.textContent = message;
+                container.appendChild(toast);
+
+                requestAnimationFrame(() => {
+                    toast.classList.remove('translate-y-2', 'opacity-0');
+                });
+
+                setTimeout(() => {
+                    toast.classList.add('opacity-0', 'translate-y-2');
+                    setTimeout(() => toast.remove(), 300);
+                }, 3800);
+            }
+
+            // --- YouTube URL Parser ---
+            function extractYouTubeId(url) {
+                if (!url) return null;
+                const patterns = [
+                    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+                    /^([a-zA-Z0-9_-]{11})$/
+                ];
+                for (const pattern of patterns) {
+                    const match = url.trim().match(pattern);
+                    if (match && match[1]) return match[1];
+                }
+                return null;
+            }
+
+            // --- Stop Active Screen Capture Stream ---
+            function stopActiveStream() {
+                if (state.mediaStream) {
+                    state.mediaStream.getTracks().forEach(track => track.stop());
+                    state.mediaStream = null;
+                }
+                autoCropRow.classList.add('hidden');
+            }
+
+            // --- Browser-Compatible MediaRecorder MimeType Resolver for MP4 / MOV / AVI ---
+            function resolveRecorderMimeType(requestedExt) {
+                const candidatesByExt = {
+                    mp4: [
+                        'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+                        'video/mp4;codecs=avc1',
+                        'video/mp4',
+                        'video/webm;codecs=h264,opus',
+                        'video/webm;codecs=vp9,opus',
+                        'video/webm;codecs=vp8,opus',
+                        'video/webm'
+                    ],
+                    mov: [
+                        'video/quicktime;codecs=avc1,mp4a.40.2',
+                        'video/quicktime',
+                        'video/mp4;codecs=avc1',
+                        'video/mp4',
+                        'video/webm;codecs=vp9,opus',
+                        'video/webm'
+                    ],
+                    avi: [
+                        'video/x-msvideo',
+                        'video/webm;codecs=vp8,opus',
+                        'video/webm;codecs=vp9,opus',
+                        'video/webm'
+                    ]
+                };
+
+                const list = candidatesByExt[requestedExt] || candidatesByExt.mp4;
+                if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') {
+                    return { mimeType: '', actualExt: requestedExt };
+                }
+
+                for (const mime of list) {
+                    if (MediaRecorder.isTypeSupported(mime)) {
+                        const actualExt = mime.includes('mp4')
+                            ? 'mp4'
+                            : (mime.includes('quicktime') ? 'mov' : (mime.includes('msvideo') ? 'avi' : requestedExt));
+                        return { mimeType: mime, actualExt };
+                    }
+                }
+                return { mimeType: '', actualExt: requestedExt };
+            }
+
+            // --- Start / Stop Recording Live ASCII Canvas Stream ---
+            function toggleAsciiVideoRecording() {
+                if (state.isRecording) {
+                    if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
+                        state.mediaRecorder.stop();
+                    }
+                    return;
+                }
+
+                if (typeof asciiOutputCanvas.captureStream !== 'function' || typeof MediaRecorder === 'undefined') {
+                    showToast('Canvas video recording is not supported in this browser.', 'error');
+                    return;
+                }
+
+                // Ensure Canvas Atlas mode is active so video frames render into the canvas stream
+                if (state.renderMode !== 'canvas') {
+                    modeCanvasBtn.click();
+                    resizeOutputCanvas();
+                    processAndRenderAscii();
+                }
+
+                if (state.isPaused) {
+                    state.isPaused = false;
+                    if (state.sourceType !== 'demo') hiddenVideo.play().catch(() => {});
+                    updatePlayPauseUI();
+                }
+
+                const requestedExt = videoFormatSelect ? videoFormatSelect.value : 'mp4';
+                const { mimeType, actualExt } = resolveRecorderMimeType(requestedExt);
+                state.recordTargetExt = requestedExt;
+
+                const canvasStream = asciiOutputCanvas.captureStream(60);
+
+                // Attach available audio tracks from live capture stream or video element
+                try {
+                    if (state.sourceType === 'screen' && state.mediaStream) {
+                        state.mediaStream.getAudioTracks().forEach(track => canvasStream.addTrack(track));
+                    } else if (state.sourceType === 'video' && !hiddenVideo.muted && typeof hiddenVideo.captureStream === 'function') {
+                        const vidStream = hiddenVideo.captureStream();
+                        vidStream.getAudioTracks().forEach(track => canvasStream.addTrack(track));
+                    }
+                } catch (_) {
+                    // Ignore audio track attach errors if restricted by source
+                }
+
+                let recorder;
+                try {
+                    recorder = mimeType
+                        ? new MediaRecorder(canvasStream, { mimeType, videoBitsPerSecond: 8_000_000 })
+                        : new MediaRecorder(canvasStream, { videoBitsPerSecond: 8_000_000 });
+                } catch (err) {
+                    console.error('MediaRecorder init failed:', err);
+                    showToast('Could not initialize video recorder for this format.', 'error');
+                    return;
+                }
+
+                state.recordedChunks = [];
+                state.mediaRecorder = recorder;
+
+                recorder.ondataavailable = (event) => {
+                    if (event.data && event.data.size > 0) {
+                        state.recordedChunks.push(event.data);
+                    }
+                };
+
+                recorder.onstop = () => {
+                    clearInterval(state.recordTimerInterval);
+                    state.recordTimerInterval = null;
+                    state.isRecording = false;
+
+                    recIndicatorDot.classList.remove('animate-ping');
+                    recordVideoBtn.classList.remove('bg-rose-600', 'text-white', 'border-rose-400');
+                    recordVideoBtn.classList.add('bg-rose-600/20', 'text-rose-300', 'border-rose-500/40');
+                    recordVideoLabel.textContent = 'Rec Video';
+
+                    canvasStream.getTracks().forEach(t => t.stop());
+
+                    if (state.recordedChunks.length === 0) {
+                        showToast('No video frames were captured during recording.', 'warn');
+                        return;
+                    }
+
+                    const finalBlob = new Blob(state.recordedChunks, {
+                        type: recorder.mimeType || (requestedExt === 'mov' ? 'video/quicktime' : (requestedExt === 'avi' ? 'video/x-msvideo' : 'video/mp4'))
+                    });
+                    const dlUrl = URL.createObjectURL(finalBlob);
+                    const link = document.createElement('a');
+                    link.href = dlUrl;
+                    link.download = `ascii-video-${state.colorMode}-${Date.now()}.${requestedExt}`;
+                    link.click();
+                    setTimeout(() => URL.revokeObjectURL(dlUrl), 1500);
+
+                    const note = actualExt !== requestedExt
+                        ? ` (encoded via browser stream as ${actualExt.toUpperCase()} container)`
+                        : '';
+                    showToast(`Exported ASCII video as .${requestedExt.toUpperCase()}${note}!`, 'success');
+                };
+
+                recorder.start(250);
+                state.isRecording = true;
+                state.recordStartTime = performance.now();
+
+                recIndicatorDot.classList.add('animate-ping');
+                recordVideoBtn.classList.remove('bg-rose-600/20', 'text-rose-300', 'border-rose-500/40');
+                recordVideoBtn.classList.add('bg-rose-600', 'text-white', 'border-rose-400');
+
+                const updateRecTimer = () => {
+                    const sec = Math.floor((performance.now() - state.recordStartTime) / 1000);
+                    const mins = String(Math.floor(sec / 60)).padStart(2, '0');
+                    const rem = String(sec % 60).padStart(2, '0');
+                    recordVideoLabel.textContent = `Stop ${mins}:${rem}`;
+                };
+                updateRecTimer();
+                state.recordTimerInterval = setInterval(updateRecTimer, 500);
+
+                showToast(`Recording ASCII stream (${requestedExt.toUpperCase()})... Click Stop when finished.`, 'info');
+            }
+
+            function clearDemoButtonHighlight() {
+                demoButtons.forEach(btn => {
+                    btn.classList.remove('active', 'border-cyber-green', 'bg-cyber-green/15', 'text-cyber-green', 'font-semibold');
+                    btn.classList.add('border-cyber-border', 'bg-cyber-bg', 'text-gray-400');
+                });
+            }
+
+            // --- Load YouTube or Direct Video URL ---
+            function handleUrlLoad() {
+                const rawUrl = urlInput.value.trim();
+                if (!rawUrl) {
+                    showToast('Please enter a YouTube URL or direct .mp4 video link.', 'warn');
+                    return;
+                }
+
+                const ytId = extractYouTubeId(rawUrl);
+                if (ytId) {
+                    youtubeIframe.src = `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0`;
+                    youtubeIframe.classList.remove('hidden');
+                    previewMonitorCanvas.classList.add('hidden');
+                    ytCaptureOverlay.classList.remove('hidden');
+                    state.ytLoaded = true;
+                    monitorHint.textContent = `YT ID: ${ytId}`;
+                    
+                    showToast('YouTube loaded in Monitor! Click "Capture Tab / YouTube Live" to stream it into ASCII.', 'success');
+                    return;
+                }
+
+                stopActiveStream();
+                youtubeIframe.classList.add('hidden');
+                youtubeIframe.src = '';
+                ytCaptureOverlay.classList.add('hidden');
+                previewMonitorCanvas.classList.remove('hidden');
+                state.ytLoaded = false;
+                clearDemoButtonHighlight();
+
+                hiddenVideo.crossOrigin = 'anonymous';
+                hiddenVideo.src = rawUrl;
+                hiddenVideo.play().then(() => {
+                    state.sourceType = 'video';
+                    state.isPaused = false;
+                    updatePlayPauseUI();
+                    sourceBadge.textContent = 'URL STREAM';
+                    monitorHint.textContent = 'Direct Video URL';
+                    showToast('External video stream loaded!', 'success');
+                }).catch(err => {
+                    console.error(err);
+                    showToast('Could not load direct video URL (check CORS or format). Try local upload or Tab Capture.', 'error');
+                    activateDemoMode('torus');
+                });
+            }
+
+            // --- Live Screen / Tab Capture via getDisplayMedia() ---
+            async function startScreenCapture() {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+                    showToast('Screen capture API is not supported in this browser.', 'error');
+                    return;
+                }
+
+                try {
+                    const stream = await navigator.mediaDevices.getDisplayMedia({
+                        video: {
+                            cursor: 'never',
+                            frameRate: { ideal: 60, max: 60 }
+                        },
+                        audio: true
+                    });
+
+                    stopActiveStream();
+                    state.mediaStream = stream;
+                    hiddenVideo.srcObject = stream;
+                    await hiddenVideo.play();
+
+                    state.sourceType = 'screen';
+                    state.isPaused = false;
+                    updatePlayPauseUI();
+                    clearDemoButtonHighlight();
+
+                    ytCaptureOverlay.classList.add('hidden');
+                    if (state.ytLoaded) {
+                        autoCropRow.classList.remove('hidden');
+                    }
+                    sourceBadge.textContent = 'LIVE TAB CAPTURE';
+                    monitorHint.textContent = 'Live Screen Stream';
+                    showToast('Live Tab/Screen capture active! Rendering real-time 60 FPS ASCII.', 'success');
+
+                    stream.getVideoTracks()[0].addEventListener('ended', () => {
+                        showToast('Screen capture ended. Reverting to 3D Wave demo.', 'info');
+                        activateDemoMode('torus');
+                    });
+
+                } catch (err) {
+                    if (err.name !== 'NotAllowedError') {
+                        console.error('Screen capture error:', err);
+                        showToast('Screen capture failed or was blocked by permissions.', 'error');
+                    }
+                }
+            }
+
+            // --- Local Video File Upload ---
+            function handleFileUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                stopActiveStream();
+                youtubeIframe.classList.add('hidden');
+                youtubeIframe.src = '';
+                ytCaptureOverlay.classList.add('hidden');
+                previewMonitorCanvas.classList.remove('hidden');
+                state.ytLoaded = false;
+                clearDemoButtonHighlight();
+
+                const fileUrl = URL.createObjectURL(file);
+                hiddenVideo.srcObject = null;
+                hiddenVideo.src = fileUrl;
+                hiddenVideo.play().then(() => {
+                    state.sourceType = 'video';
+                    state.isPaused = false;
+                    updatePlayPauseUI();
+                    const shortName = file.name.length > 14 ? file.name.slice(0, 12) + '…' : file.name;
+                    sourceBadge.textContent = `FILE: ${shortName.toUpperCase()}`;
+                    monitorHint.textContent = file.name;
+                    showToast(`Playing "${file.name}" in ASCII!`, 'success');
+                }).catch(err => {
+                    console.error(err);
+                    showToast('Unable to decode selected video file.', 'error');
+                });
+            }
+
+            // --- Built-in Procedural Animations ---
+            const stars = Array.from({ length: 160 }, () => ({
+                x: (Math.random() - 0.5) * 400,
+                y: (Math.random() - 0.5) * 400,
+                z: Math.random() * 400 + 1
+            }));
+
+            function activateDemoMode(demoName) {
+                const validDemo = ['torus', 'plasma', 'warp'].includes(demoName) ? demoName : 'torus';
+                stopActiveStream();
+
+                if (state.sourceType === 'video') {
+                    hiddenVideo.pause();
+                    hiddenVideo.srcObject = null;
+                }
+
+                youtubeIframe.classList.add('hidden');
+                youtubeIframe.src = '';
+                ytCaptureOverlay.classList.add('hidden');
+                previewMonitorCanvas.classList.remove('hidden');
+                state.ytLoaded = false;
+
+                state.sourceType = 'demo';
+                state.demoType = validDemo;
+                state.isPaused = false;
+                updatePlayPauseUI();
+
+                clearDemoButtonHighlight();
+                demoButtons.forEach(btn => {
+                    if (btn.dataset.demo === validDemo) {
+                        btn.classList.add('active', 'border-cyber-green', 'bg-cyber-green/15', 'text-cyber-green', 'font-semibold');
+                        btn.classList.remove('border-cyber-border', 'bg-cyber-bg', 'text-gray-400');
+                    }
+                });
+
+                const demoLabels = {
+                    torus: 'DEMO: 3D WAVE',
+                    plasma: 'DEMO: PLASMA ORB',
+                    warp: 'DEMO: STAR WARP'
+                };
+                sourceBadge.textContent = demoLabels[validDemo];
+                monitorHint.textContent = 'Procedural Demo';
+            }
+
+            function renderProceduralDemo(dt) {
+                state.time += dt;
+                const t = state.time;
+                const w = demoCanvas.width;
+                const h = demoCanvas.height;
+
+                demoCtx.fillStyle = '#000000';
+                demoCtx.fillRect(0, 0, w, h);
+
+                if (state.demoType === 'torus') {
+                    const cx = w / 2;
+                    const cy = h / 2;
+                    const R1 = 68;
+                    const R2 = 30;
+                    const cosA = Math.cos(t * 1.1);
+                    const sinA = Math.sin(t * 1.1);
+                    const cosB = Math.cos(t * 0.65);
+                    const sinB = Math.sin(t * 0.65);
+
+                    for (let theta = 0; theta < Math.PI * 2; theta += 0.14) {
+                        const cosT = Math.cos(theta);
+                        const sinT = Math.sin(theta);
+
+                        for (let phi = 0; phi < Math.PI * 2; phi += 0.08) {
+                            const cosP = Math.cos(phi);
+                            const sinP = Math.sin(phi);
+
+                            const circleX = R1 + R2 * cosT;
+                            const circleY = R2 * sinT;
+
+                            const x = circleX * (cosB * cosP + sinA * sinB * sinP) - circleY * cosA * sinB;
+                            const y = circleX * (sinB * cosP - sinA * cosB * sinP) + circleY * cosA * cosB;
+                            const z = 180 + cosA * circleX * sinP + circleY * sinA;
+
+                            const ooz = 1 / z;
+                            const xp = cx + x * ooz * 240;
+                            const yp = cy + y * ooz * 240;
+
+                            const L = cosP * cosT * sinB - cosA * cosT * sinP - sinA * sinT + cosB * (cosA * sinT - cosT * sinA * sinP);
+                            if (L > -0.2) {
+                                const lum = Math.min(255, Math.max(30, Math.floor((L + 0.3) * 190)));
+                                const hue = (theta * 57 + t * 50) % 360;
+                                demoCtx.fillStyle = `hsl(${hue}, 85%, ${Math.floor((lum / 255) * 65)}%)`;
+                                demoCtx.fillRect(xp, yp, 3.2, 3.2);
+                            }
+                        }
+                    }
+                } else if (state.demoType === 'plasma') {
+                    const grad = demoCtx.createRadialGradient(
+                        w / 2 + Math.cos(t * 1.5) * 70,
+                        h / 2 + Math.sin(t * 1.2) * 40,
+                        10,
+                        w / 2,
+                        h / 2,
+                        180
+                    );
+                    grad.addColorStop(0, '#ffffff');
+                    grad.addColorStop(0.25, '#00ffcc');
+                    grad.addColorStop(0.6, '#3b82f6');
+                    grad.addColorStop(1, '#000000');
+                    demoCtx.fillStyle = grad;
+                    demoCtx.fillRect(0, 0, w, h);
+
+                    for (let i = 0; i < 5; i++) {
+                        const angle = t * (1 + i * 0.3) + i;
+                        const ox = w / 2 + Math.cos(angle) * (40 + i * 24);
+                        const oy = h / 2 + Math.sin(angle * 1.3) * (25 + i * 14);
+                        const radius = 18 + Math.sin(t * 3 + i) * 8;
+
+                        demoCtx.beginPath();
+                        demoCtx.arc(ox, oy, radius, 0, Math.PI * 2);
+                        demoCtx.fillStyle = i % 2 === 0 ? '#ffffff' : '#ff3366';
+                        demoCtx.fill();
+                    }
+                } else if (state.demoType === 'warp') {
+                    const cx = w / 2;
+                    const cy = h / 2;
+                    stars.forEach(star => {
+                        star.z -= 260 * dt;
+                        if (star.z <= 1) {
+                            star.x = (Math.random() - 0.5) * 420;
+                            star.y = (Math.random() - 0.5) * 420;
+                            star.z = 400;
+                        }
+                        const k = 160 / star.z;
+                        const px = cx + star.x * k;
+                        const py = cy + star.y * k;
+                        const size = Math.max(1.5, (1 - star.z / 400) * 6);
+                        const bright = Math.min(255, Math.floor((1 - star.z / 400) * 255));
+
+                        demoCtx.strokeStyle = `rgb(${bright}, ${Math.min(255, bright + 40)}, 255)`;
+                        demoCtx.lineWidth = size;
+                        demoCtx.beginPath();
+                        demoCtx.moveTo(px, py);
+                        demoCtx.lineTo(cx + star.x * (160 / (star.z + 22)), cy + star.y * (160 / (star.z + 22)));
+                        demoCtx.stroke();
+                    });
+                }
+            }
+
+            // --- Resize Output Canvas cleanly to match Stage Container ---
+            function resizeOutputCanvas() {
+                const rect = asciiStageContainer.getBoundingClientRect();
+                const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                if (rect.width > 0 && rect.height > 0) {
+                    asciiOutputCanvas.width = Math.floor(rect.width * dpr);
+                    asciiOutputCanvas.height = Math.floor(rect.height * dpr);
+                }
+            }
+
+            window.addEventListener('resize', resizeOutputCanvas);
+            resizeOutputCanvas();
+
+            // --- Compute Source Crop Region (Supports Auto-Crop to YouTube Iframe during Tab Capture) ---
+            function getSourceCropRect(srcWidth, srcHeight) {
+                if (
+                    state.sourceType === 'screen' &&
+                    state.ytLoaded &&
+                    state.autoCropYt &&
+                    !youtubeIframe.classList.contains('hidden')
+                ) {
+                    const iframeRect = youtubeIframe.getBoundingClientRect();
+                    const vpW = window.innerWidth;
+                    const vpH = window.innerHeight;
+                    if (vpW > 0 && vpH > 0 && iframeRect.width > 20 && iframeRect.height > 20) {
+                        const sx = Math.max(0, (iframeRect.left / vpW) * srcWidth);
+                        const sy = Math.max(0, (iframeRect.top / vpH) * srcHeight);
+                        const sw = Math.min(srcWidth - sx, (iframeRect.width / vpW) * srcWidth);
+                        const sh = Math.min(srcHeight - sy, (iframeRect.height / vpH) * srcHeight);
+                        if (sw > 10 && sh > 10) {
+                            return { sx, sy, sw, sh };
+                        }
+                    }
+                }
+                return { sx: 0, sy: 0, sw: srcWidth, sh: srcHeight };
+            }
+
+            // --- Core ASCII Conversion & High-Speed Rendering Frame ---
+            function processAndRenderAscii() {
+                const tStart = performance.now();
+
+                let activeSource = null;
+                let srcWidth = 480;
+                let srcHeight = 270;
+
+                if (state.sourceType === 'demo') {
+                    activeSource = demoCanvas;
+                    srcWidth = demoCanvas.width;
+                    srcHeight = demoCanvas.height;
+                } else if ((state.sourceType === 'video' || state.sourceType === 'screen') && hiddenVideo.readyState >= 2) {
+                    activeSource = hiddenVideo;
+                    srcWidth = hiddenVideo.videoWidth || 640;
+                    srcHeight = hiddenVideo.videoHeight || 360;
+                }
+
+                if (!activeSource) return;
+
+                const crop = getSourceCropRect(srcWidth, srcHeight);
+
+                // Mirror source to small monitor canvas
+                if (!previewMonitorCanvas.classList.contains('hidden')) {
+                    if (previewMonitorCanvas.width !== 320) {
+                        previewMonitorCanvas.width = 320;
+                        previewMonitorCanvas.height = 180;
+                    }
+                    previewMonitorCtx.drawImage(activeSource, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, 320, 180);
+                }
+
+                const cols = state.cols;
+                const aspect = crop.sh / crop.sw;
+                const charAspectRatio = 0.55;
+                const rows = Math.max(12, Math.round(cols * aspect * charAspectRatio));
+                state.rows = rows;
+                gridReadout.textContent = `${cols}x${rows}`;
+
+                if (sampleCanvas.width !== cols || sampleCanvas.height !== rows) {
+                    sampleCanvas.width = cols;
+                    sampleCanvas.height = rows;
+                }
+
+                try {
+                    sampleCtx.drawImage(activeSource, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, cols, rows);
+                } catch (e) {
+                    return;
+                }
+
+                let imageData;
+                try {
+                    imageData = sampleCtx.getImageData(0, 0, cols, rows).data;
+                } catch (corsErr) {
+                    showToast('CORS security blocked pixel read on this stream. Use Tab Capture instead.', 'error');
+                    activateDemoMode('torus');
+                    return;
+                }
+
+                const ramp = state.charsetKey === 'custom'
+                    ? (customRampInput.value.length > 0 ? customRampInput.value : ' .:-=+*#%@')
+                    : CHAR_RAMPS[state.charsetKey];
+                const rampLen = ramp.length;
+                const maxIdx = rampLen - 1;
+
+                const invertLuma = state.invertLuminance;
+                const colorMode = state.colorMode;
+                const useDither = state.bayerDither;
+                const tLut = toneLut;
+                const pLut4 = paletteLut4Bit;
+                const bayerFlat = BAYER_FLAT_SCALED;
+
+                // --- Mode A: Single-Pass 32-Bit Pixel-Buffer Canvas Blitter (1 putImageData per frame) ---
+                if (state.renderMode === 'canvas') {
+                    const cw = asciiOutputCanvas.width;
+                    const ch = asciiOutputCanvas.height;
+
+                    const cellW = Math.max(2, Math.floor(cw / cols));
+                    const cellH = Math.max(4, Math.floor(ch / rows));
+                    const fontSize = Math.max(4, Math.min(cellH * 1.06, cellW * 1.8));
+                    ensureGlyphMasks(ramp, cellW, cellH, fontSize);
+
+                    const gW = pixelBlitter.cellW;
+                    const gH = pixelBlitter.cellH;
+                    const masks = pixelBlitter.glyphMasks;
+                    const cellArea = gW * gH;
+
+                    const gridW = cols * gW;
+                    const gridH = rows * gH;
+                    const offsetX = Math.max(0, (cw - gridW) >> 1);
+                    const offsetY = Math.max(0, (ch - gridH) >> 1);
+
+                    if (!pixelBlitter.frameImageData || pixelBlitter.frameW !== cw || pixelBlitter.frameH !== ch) {
+                        pixelBlitter.frameImageData = asciiOutputCtx.createImageData(cw, ch);
+                        pixelBlitter.frameU32 = new Uint32Array(pixelBlitter.frameImageData.data.buffer);
+                        pixelBlitter.frameW = cw;
+                        pixelBlitter.frameH = ch;
+                    }
+
+                    const fb = pixelBlitter.frameU32;
+                    const isInverted = colorMode === 'inverted';
+                    const bgU32 = isInverted ? 0xfffcfaf8 : 0xff0a0705;
+                    fb.fill(bgU32);
+
+                    const monoR = colorMode === 'amber' ? 255 : (colorMode === 'white' ? 243 : (isInverted ? 15 : 0));
+                    const monoG = colorMode === 'amber' ? 176 : (colorMode === 'white' ? 244 : (isInverted ? 23 : 255));
+                    const monoB = colorMode === 'amber' ? 0   : (colorMode === 'white' ? 246 : (isInverted ? 42 : 65));
+                    const bgR = isInverted ? 248 : 5;
+                    const bgG = isInverted ? 250 : 7;
+                    const bgB = isInverted ? 252 : 10;
+
+                    for (let y = 0; y < rows; y++) {
+                        const rowBayerBase = (y & 3) << 2;
+                        const rowPixelBase = y * cols;
+                        const dstYBase = offsetY + y * gH;
+                        if (dstYBase + gH > ch) break;
+
+                        for (let x = 0; x < cols; x++) {
+                            const dstXBase = offsetX + x * gW;
+                            if (dstXBase + gW > cw) break;
+
+                            const idx = (rowPixelBase + x) << 2;
+                            const r = tLut[imageData[idx]];
+                            const g = tLut[imageData[idx + 1]];
+                            const b = tLut[imageData[idx + 2]];
+
+                            let luma255 = (77 * r + 150 * g + 29 * b) >> 8;
+                            if (invertLuma) luma255 = 255 - luma255;
+
+                            const charIdx = ((255 - luma255) * maxIdx) >> 8;
+                            const chGlyph = ramp[charIdx];
+                            plainLineBuf[x] = chGlyph;
+
+                            if (chGlyph === ' ') continue;
+
+                            let fgR = monoR, fgG = monoG, fgB = monoB;
+                            if (colorMode === '4bit') {
+                                let dr = r, dg = g, db = b;
+                                if (useDither) {
+                                    const d = bayerFlat[rowBayerBase | (x & 3)];
+                                    dr = r + d; dr = dr < 0 ? 0 : (dr > 255 ? 255 : dr);
+                                    dg = g + d; dg = dg < 0 ? 0 : (dg > 255 ? 255 : dg);
+                                    db = b + d; db = db < 0 ? 0 : (db > 255 ? 255 : db);
+                                }
+                                const palIdx = pLut4[((dr >> 3) << 10) | ((dg >> 3) << 5) | (db >> 3)];
+                                const palCol = CGA_4BIT_PALETTE[palIdx];
+                                fgR = palCol.r; fgG = palCol.g; fgB = palCol.b;
+                            } else if (colorMode === 'rgb') {
+                                fgR = r; fgG = g; fgB = b;
+                            } else if (colorMode === 'cyberpunk') {
+                                if (luma255 > 204) { fgR = 248; fgG = 250; fgB = 252; }
+                                else if (r > g + 15) { fgR = 236; fgG = 72; fgB = 153; }
+                                else if (luma255 > 72) { fgR = 6; fgG = 182; fgB = 212; }
+                                else { fgR = 49; fgG = 46; fgB = 129; }
+                            }
+
+                            const maskOffset = charIdx * cellArea;
+                            for (let py = 0; py < gH; py++) {
+                                const fbRow = (dstYBase + py) * cw + dstXBase;
+                                const mRow = maskOffset + py * gW;
+                                for (let px = 0; px < gW; px++) {
+                                    const cov = masks[mRow + px];
+                                    if (cov > 16) {
+                                        const outR = bgR + (((fgR - bgR) * cov) >> 8);
+                                        const outG = bgG + (((fgG - bgG) * cov) >> 8);
+                                        const outB = bgB + (((fgB - bgB) * cov) >> 8);
+                                        fb[fbRow + px] = (255 << 24) | (outB << 16) | (outG << 8) | outR;
+                                    }
+                                }
+                            }
+                        }
+                        plainLineBuf.length = cols;
+                        plainFrameBuf[y] = plainLineBuf.join('');
+                    }
+
+                    asciiOutputCtx.putImageData(pixelBlitter.frameImageData, 0, 0);
+                    plainFrameBuf.length = rows;
+                    state.lastFrameText = plainFrameBuf.join('\n');
+
+                } else {
+                    // --- Mode B: Ultra-Fast Full-Color Run-Length Encoded (RLE) Selectable <pre> Mode ---
+                    const safeRamp = getHtmlSafeRamp(ramp);
+                    let chunkPtr = 0;
+                    let spanCount = 0;
+
+                    if (colorMode === '4bit') {
+                        asciiPreOutput.style.backgroundColor = '#05070a';
+                        asciiPreOutput.style.color = '#f2f2f2';
+
+                        for (let y = 0; y < rows; y++) {
+                            const rowBayerBase = (y & 3) << 2;
+                            const rowPixelBase = y * cols;
+                            let activePal = -1;
+
+                            for (let x = 0; x < cols; x++) {
+                                const idx = (rowPixelBase + x) << 2;
+                                const r = tLut[imageData[idx]];
+                                const g = tLut[imageData[idx + 1]];
+                                const b = tLut[imageData[idx + 2]];
+
+                                let luma255 = (77 * r + 150 * g + 29 * b) >> 8;
+                                if (invertLuma) luma255 = 255 - luma255;
+
+                                const charIdx = ((255 - luma255) * maxIdx) >> 8;
+                                plainLineBuf[x] = ramp[charIdx];
+
+                                let dr = r, dg = g, db = b;
+                                if (useDither) {
+                                    const d = bayerFlat[rowBayerBase | (x & 3)];
+                                    dr = r + d; dr = dr < 0 ? 0 : (dr > 255 ? 255 : dr);
+                                    dg = g + d; dg = dg < 0 ? 0 : (dg > 255 ? 255 : dg);
+                                    db = b + d; db = db < 0 ? 0 : (db > 255 ? 255 : db);
+                                }
+                                const palIdx = pLut4[((dr >> 3) << 10) | ((dg >> 3) << 5) | (db >> 3)];
+
+                                if (palIdx !== activePal) {
+                                    if (activePal !== -1) htmlChunkBuf[chunkPtr++] = '</span>';
+                                    htmlChunkBuf[chunkPtr++] = C4_OPEN_TAGS[palIdx];
+                                    activePal = palIdx;
+                                    spanCount++;
+                                }
+                                htmlChunkBuf[chunkPtr++] = safeRamp[charIdx];
+                            }
+                            if (activePal !== -1) htmlChunkBuf[chunkPtr++] = '</span>';
+                            htmlChunkBuf[chunkPtr++] = '\n';
+
+                            plainLineBuf.length = cols;
+                            plainFrameBuf[y] = plainLineBuf.join('');
+                        }
+
+                        htmlChunkBuf.length = chunkPtr;
+                        asciiPreOutput.innerHTML = htmlChunkBuf.join('');
+                        plainFrameBuf.length = rows;
+                        state.lastFrameText = plainFrameBuf.join('\n');
+
+                    } else if (colorMode === 'rgb') {
+                        // 12-bit quantized RGB (4 bits/channel = 4096 colors) with RLE span merging
+                        asciiPreOutput.style.backgroundColor = '#05070a';
+                        asciiPreOutput.style.color = '#ffffff';
+
+                        for (let y = 0; y < rows; y++) {
+                            const rowPixelBase = y * cols;
+                            let activeKey = -1;
+
+                            for (let x = 0; x < cols; x++) {
+                                const idx = (rowPixelBase + x) << 2;
+                                const r = tLut[imageData[idx]];
+                                const g = tLut[imageData[idx + 1]];
+                                const b = tLut[imageData[idx + 2]];
+
+                                let luma255 = (77 * r + 150 * g + 29 * b) >> 8;
+                                if (invertLuma) luma255 = 255 - luma255;
+
+                                const charIdx = ((255 - luma255) * maxIdx) >> 8;
+                                plainLineBuf[x] = ramp[charIdx];
+
+                                // 12-bit color key: top 4 bits of R, G, B
+                                const key12 = ((r & 0xf0) << 4) | (g & 0xf0) | (b >> 4);
+                                if (key12 !== activeKey) {
+                                    if (activeKey !== -1) htmlChunkBuf[chunkPtr++] = '</span>';
+                                    htmlChunkBuf[chunkPtr++] = '<span style="color:';
+                                    htmlChunkBuf[chunkPtr++] = HEX12_LUT[key12];
+                                    htmlChunkBuf[chunkPtr++] = '">';
+                                    activeKey = key12;
+                                    spanCount++;
+                                }
+                                htmlChunkBuf[chunkPtr++] = safeRamp[charIdx];
+                            }
+                            if (activeKey !== -1) htmlChunkBuf[chunkPtr++] = '</span>';
+                            htmlChunkBuf[chunkPtr++] = '\n';
+
+                            plainLineBuf.length = cols;
+                            plainFrameBuf[y] = plainLineBuf.join('');
+                        }
+
+                        htmlChunkBuf.length = chunkPtr;
+                        asciiPreOutput.innerHTML = htmlChunkBuf.join('');
+                        plainFrameBuf.length = rows;
+                        state.lastFrameText = plainFrameBuf.join('\n');
+
+                    } else if (colorMode === 'cyberpunk') {
+                        asciiPreOutput.style.backgroundColor = '#05070a';
+                        asciiPreOutput.style.color = '#06b6d4';
+
+                        for (let y = 0; y < rows; y++) {
+                            const rowPixelBase = y * cols;
+                            let activePal = -1;
+
+                            for (let x = 0; x < cols; x++) {
+                                const idx = (rowPixelBase + x) << 2;
+                                const r = tLut[imageData[idx]];
+                                const g = tLut[imageData[idx + 1]];
+                                const b = tLut[imageData[idx + 2]];
+
+                                let luma255 = (77 * r + 150 * g + 29 * b) >> 8;
+                                if (invertLuma) luma255 = 255 - luma255;
+
+                                const charIdx = ((255 - luma255) * maxIdx) >> 8;
+                                plainLineBuf[x] = ramp[charIdx];
+
+                                const palIdx = luma255 > 204 ? 3 : (r > g + 15 ? 1 : (luma255 > 72 ? 2 : 0));
+                                if (palIdx !== activePal) {
+                                    if (activePal !== -1) htmlChunkBuf[chunkPtr++] = '</span>';
+                                    htmlChunkBuf[chunkPtr++] = CYBER_OPEN_TAGS[palIdx];
+                                    activePal = palIdx;
+                                    spanCount++;
+                                }
+                                htmlChunkBuf[chunkPtr++] = safeRamp[charIdx];
+                            }
+                            if (activePal !== -1) htmlChunkBuf[chunkPtr++] = '</span>';
+                            htmlChunkBuf[chunkPtr++] = '\n';
+
+                            plainLineBuf.length = cols;
+                            plainFrameBuf[y] = plainLineBuf.join('');
+                        }
+
+                        htmlChunkBuf.length = chunkPtr;
+                        asciiPreOutput.innerHTML = htmlChunkBuf.join('');
+                        plainFrameBuf.length = rows;
+                        state.lastFrameText = plainFrameBuf.join('\n');
+
+                    } else {
+                        // Monochrome themes: 0 child spans needed, single textContent update!
+                        for (let y = 0; y < rows; y++) {
+                            const rowPixelBase = y * cols;
+                            for (let x = 0; x < cols; x++) {
+                                const idx = (rowPixelBase + x) << 2;
+                                const r = tLut[imageData[idx]];
+                                const g = tLut[imageData[idx + 1]];
+                                const b = tLut[imageData[idx + 2]];
+
+                                let luma255 = (77 * r + 150 * g + 29 * b) >> 8;
+                                if (invertLuma) luma255 = 255 - luma255;
+
+                                const charIdx = ((255 - luma255) * maxIdx) >> 8;
+                                plainLineBuf[x] = ramp[charIdx];
+                            }
+                            plainLineBuf.length = cols;
+                            plainFrameBuf[y] = plainLineBuf.join('');
+                        }
+
+                        plainFrameBuf.length = rows;
+                        const fullPlain = plainFrameBuf.join('\n');
+                        state.lastFrameText = fullPlain;
+                        asciiPreOutput.textContent = fullPlain;
+                        spanCount = 0;
+
+                        if (colorMode === 'inverted') {
+                            asciiPreOutput.style.backgroundColor = '#f8fafc';
+                            asciiPreOutput.style.color = '#0f172a';
+                        } else {
+                            asciiPreOutput.style.backgroundColor = '#05070a';
+                            asciiPreOutput.style.color = colorMode === 'amber'
+                                ? '#ffb000'
+                                : (colorMode === 'white' ? '#f3f4f6' : '#00ff41');
+                        }
+                    }
+
+                    state.lastSpanCount = spanCount;
+                    domNodesBadge.textContent = `• RLE SPANS: ${spanCount}`;
+
+                    const stageRect = asciiStageContainer.getBoundingClientRect();
+                    const dynamicPx = Math.max(4, Math.min(stageRect.width / (cols * 0.61), stageRect.height / rows));
+                    asciiPreOutput.style.fontSize = `${dynamicPx.toFixed(2)}px`;
+                }
+
+                const elapsed = performance.now() - tStart;
+                state.avgComputeMs = state.avgComputeMs * 0.85 + elapsed * 0.15;
+            }
+
+            // --- Dual Scheduler: Unlocked Max-FPS (MessageChannel) vs VSync (requestAnimationFrame) ---
+            let lastFrameTimestamp = performance.now();
+            const unlockChannel = new MessageChannel();
+
+            function stepFrame() {
+                const now = performance.now();
+                const dt = Math.min(0.05, Math.max(0.0005, (now - lastFrameTimestamp) / 1000));
+                lastFrameTimestamp = now;
+
+                state.frameCount++;
+                if (now - state.lastFpsTime >= 350) {
+                    state.currentFps = Math.round((state.frameCount * 1000) / (now - state.lastFpsTime));
+                    fpsReadout.textContent = `${state.currentFps} FPS`;
+                    frameTimeReadout.textContent = `${state.avgComputeMs.toFixed(1)}ms`;
+                    state.frameCount = 0;
+                    state.lastFpsTime = now;
+                }
+
+                if (!state.isPaused) {
+                    if (state.sourceType === 'demo') {
+                        renderProceduralDemo(dt);
+                    }
+                    processAndRenderAscii();
+                }
+
+                scheduleNextFrame();
+            }
+
+            unlockChannel.port1.onmessage = stepFrame;
+
+            function scheduleNextFrame() {
+                if (state.loopMode === 'unlocked') {
+                    // Yield briefly via MessageChannel so browser paints & handles input while unlocking FPS past 60Hz
+                    unlockChannel.port2.postMessage(null);
+                } else {
+                    requestAnimationFrame(stepFrame);
+                }
+            }
+
+            // --- UI Event Listeners ---
+            loadUrlBtn.addEventListener('click', handleUrlLoad);
+            urlInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') handleUrlLoad();
+            });
+
+            captureScreenBtn.addEventListener('click', startScreenCapture);
+            quickCaptureOverlayBtn.addEventListener('click', startScreenCapture);
+            fileInput.addEventListener('change', handleFileUpload);
+
+            demoButtons.forEach(btn => {
+                btn.addEventListener('click', () => activateDemoMode(btn.dataset.demo));
+            });
+
+            toggleCorsInfoBtn.addEventListener('click', () => {
+                corsInfoBox.classList.toggle('hidden');
+            });
+
+            charsetSelect.addEventListener('change', (e) => {
+                state.charsetKey = e.target.value;
+                customRampContainer.classList.toggle('hidden', state.charsetKey !== 'custom');
+                rampLabel.textContent = `RAMP: ${state.charsetKey.toUpperCase()}`;
+                if (state.isPaused) processAndRenderAscii();
+            });
+
+            customRampInput.addEventListener('input', () => {
+                if (state.isPaused) processAndRenderAscii();
+            });
+
+            colorModeSelect.addEventListener('change', (e) => {
+                state.colorMode = e.target.value;
+                fourBitOptionsContainer.classList.toggle('hidden', state.colorMode !== '4bit');
+                if (state.isPaused) processAndRenderAscii();
+            });
+
+            bayerDitherCheck.addEventListener('change', (e) => {
+                state.bayerDither = e.target.checked;
+                if (state.isPaused) processAndRenderAscii();
+            });
+
+            autoCropYtCheck.addEventListener('change', (e) => {
+                state.autoCropYt = e.target.checked;
+                if (state.isPaused) processAndRenderAscii();
+            });
+
+            colsSlider.addEventListener('input', (e) => {
+                state.cols = parseInt(e.target.value, 10);
+                colsValue.textContent = `${state.cols} chars`;
+                if (state.isPaused) processAndRenderAscii();
+            });
+
+            brightnessSlider.addEventListener('input', (e) => {
+                state.brightness = parseInt(e.target.value, 10);
+                brightnessValue.textContent = state.brightness > 0 ? `+${state.brightness}` : state.brightness;
+                rebuildToneLut(state.brightness, state.contrast);
+                if (state.isPaused) processAndRenderAscii();
+            });
+
+            contrastSlider.addEventListener('input', (e) => {
+                state.contrast = parseFloat(e.target.value);
+                contrastValue.textContent = `${state.contrast.toFixed(2)}x`;
+                rebuildToneLut(state.brightness, state.contrast);
+                if (state.isPaused) processAndRenderAscii();
+            });
+
+            fpsLoopSelect.addEventListener('change', (e) => {
+                state.loopMode = e.target.value;
+                showToast(
+                    state.loopMode === 'unlocked'
+                        ? 'Frame rate cap unlocked (Max Speed).'
+                        : 'Frame rate synced to monitor VSync.',
+                    'info'
+                );
+            });
+
+            invertLuminanceCheck.addEventListener('change', (e) => {
+                state.invertLuminance = e.target.checked;
+                if (state.isPaused) processAndRenderAscii();
+            });
+
+            crtScanlinesCheck.addEventListener('change', (e) => {
+                crtOverlay.classList.toggle('hidden', !e.target.checked);
+            });
+
+            function updatePlayPauseUI() {
+                playPauseLabel.textContent = state.isPaused ? 'Resume' : 'Pause';
+                playIcon.classList.toggle('hidden', !state.isPaused);
+                pauseIcon.classList.toggle('hidden', state.isPaused);
+                statusDot.classList.toggle('animate-pulse', !state.isPaused);
+                statusDot.classList.toggle('bg-amber-400', state.isPaused);
+                statusDot.classList.toggle('bg-cyber-green', !state.isPaused);
+            }
+
+            playPauseBtn.addEventListener('click', () => {
+                state.isPaused = !state.isPaused;
+                if (state.sourceType !== 'demo') {
+                    if (state.isPaused) hiddenVideo.pause();
+                    else hiddenVideo.play();
+                }
+                updatePlayPauseUI();
+            });
+
+            muteBtn.addEventListener('click', () => {
+                hiddenVideo.muted = !hiddenVideo.muted;
+                const isMuted = hiddenVideo.muted;
+                muteLabel.textContent = isMuted ? 'Muted' : 'Audio On';
+                muteIcon.classList.toggle('hidden', !isMuted);
+                unmuteIcon.classList.toggle('hidden', isMuted);
+            });
+
+            modeCanvasBtn.addEventListener('click', () => {
+                state.renderMode = 'canvas';
+                asciiOutputCanvas.classList.remove('hidden');
+                asciiPreOutput.classList.add('hidden');
+                domNodesBadge.classList.add('hidden');
+                modeCanvasBtn.classList.add('bg-cyber-green/20', 'text-cyber-green', 'font-semibold');
+                modeCanvasBtn.classList.remove('text-gray-400');
+                modeTextBtn.classList.remove('bg-cyber-green/20', 'text-cyber-green', 'font-semibold');
+                modeTextBtn.classList.add('text-gray-400');
+                renderEngineLabel.textContent = 'ENGINE: CANVAS ATLAS';
+                resizeOutputCanvas();
+                if (state.isPaused) processAndRenderAscii();
+            });
+
+            modeTextBtn.addEventListener('click', () => {
+                state.renderMode = 'text';
+                asciiOutputCanvas.classList.add('hidden');
+                asciiPreOutput.classList.remove('hidden');
+                domNodesBadge.classList.remove('hidden');
+                modeTextBtn.classList.add('bg-cyber-green/20', 'text-cyber-green', 'font-semibold');
+                modeTextBtn.classList.remove('text-gray-400');
+                modeCanvasBtn.classList.remove('bg-cyber-green/20', 'text-cyber-green', 'font-semibold');
+                modeCanvasBtn.classList.add('text-gray-400');
+                renderEngineLabel.textContent = 'ENGINE: COLOR <PRE> RLE';
+                if (state.isPaused) processAndRenderAscii();
+            });
+
+            recordVideoBtn.addEventListener('click', toggleAsciiVideoRecording);
+
+            copyTextBtn.addEventListener('click', () => {
+                const textToCopy = state.renderMode === 'text'
+                    ? asciiPreOutput.textContent
+                    : state.lastFrameText;
+                if (!textToCopy) return;
+                const textarea = document.createElement('textarea');
+                textarea.value = textToCopy;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast(`Copied ${state.cols}x${state.rows} ASCII frame to clipboard!`, 'success');
+                } catch (err) {
+                    showToast('Failed to copy ASCII frame.', 'error');
+                }
+                document.body.removeChild(textarea);
+            });
+
+            exportPngBtn.addEventListener('click', () => {
+                const prevMode = state.renderMode;
+                if (prevMode !== 'canvas') {
+                    state.renderMode = 'canvas';
+                    resizeOutputCanvas();
+                    processAndRenderAscii();
+                }
+
+                const link = document.createElement('a');
+                link.download = `ascii-frame-${Date.now()}.png`;
+                link.href = asciiOutputCanvas.toDataURL('image/png');
+                link.click();
+
+                if (prevMode !== 'canvas') {
+                    state.renderMode = prevMode;
+                }
+                showToast('Saved high-res ASCII PNG snapshot!', 'success');
+            });
+
+            // Export Standalone 60FPS HTML Player (Packages full document with active settings)
+            exportHtmlBtn.addEventListener('click', () => {
+                const docClone = document.documentElement.cloneNode(true);
+                // Reset transient runtime UI states in the exported clone
+                const toastBox = docClone.querySelector('#toastContainer');
+                if (toastBox) toastBox.innerHTML = '';
+
+                // Inject active preset configuration script so standalone file starts in user's chosen mode
+                const presetScript = docClone.ownerDocument.createElement('script');
+                presetScript.textContent = `
+                    window.addEventListener('DOMContentLoaded', () => {
+                        const colorSel = document.getElementById('colorModeSelect');
+                        const charSel = document.getElementById('charsetSelect');
+                        const colsSld = document.getElementById('colsSlider');
+                        const ditherChk = document.getElementById('bayerDitherCheck');
+                        const loopSel = document.getElementById('fpsLoopSelect');
+                        if (colorSel) { colorSel.value = ${JSON.stringify(state.colorMode)}; colorSel.dispatchEvent(new Event('change')); }
+                        if (charSel) { charSel.value = ${JSON.stringify(state.charsetKey)}; charSel.dispatchEvent(new Event('change')); }
+                        if (colsSld) { colsSld.value = ${JSON.stringify(String(state.cols))}; colsSld.dispatchEvent(new Event('input')); }
+                        if (ditherChk) { ditherChk.checked = ${JSON.stringify(state.bayerDither)}; ditherChk.dispatchEvent(new Event('change')); }
+                        if (loopSel) { loopSel.value = ${JSON.stringify(state.loopMode)}; loopSel.dispatchEvent(new Event('change')); }
+                        if (${JSON.stringify(state.renderMode)} === 'text') {
+                            document.getElementById('modeTextBtn')?.click();
+                        }
+                    });
+                `;
+                docClone.querySelector('body').appendChild(presetScript);
+
+                const htmlPayload = '<!DOCTYPE html>\n' + docClone.outerHTML;
+                const blob = new Blob([htmlPayload], { type: 'text/html;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `ascii-unlocked-player-${state.colorMode}.html`;
+                link.click();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+                showToast('Exported standalone unlocked-FPS ASCII HTML player!', 'success');
+            });
+
+            // Start Engine on Window Load
+            window.addEventListener('load', () => {
+                resizeOutputCanvas();
+                activateDemoMode('torus');
+                scheduleNextFrame();
+            });
+        })();
+    </script>
+</body>
+</html>
